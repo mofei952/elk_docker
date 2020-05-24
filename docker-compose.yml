@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  proxy:
+    build: proxy
+    image: elk-docker-proxy
+    container_name: elk-docker-proxy
+    volumes:
+      - ./log/nginx:/var/log/nginx/
+    ports:
+      - 80:80
+    user: root
+    privileged: true
+
+  app:
+    build: app
+    image: elk-docker-app
+    container_name: elk-docker-app
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+
+  elasticsearch:
+    image: elasticsearch:5.6.5
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+    ports:
+      - 9200:9200
+
+  logstash:
+    image: logstash:5.6.5
+    container_name: logstash
+    volumes:
+      - ./log/nginx:/tmp/log/nginx
+      - ./logstash/logstash.conf:/etc/logstash.conf
+    depends_on:
+      - "elasticsearch"
+    privileged: true
+    command: ["-f", "/etc/logstash.conf"]
+
+  kibana:
+    image: kibana:5.6.5
+    container_name: kibana
+    ports:
+      - 5601:5601
+    depends_on:
+      - "elasticsearch"
